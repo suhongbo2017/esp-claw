@@ -46,20 +46,15 @@ jobs:
           # 5. Build the firmware
           idf.py build
 
-      - name: Collect firmware artifacts
-        run: |
-          mkdir -p build/firmware
-          cp build/edge_agent.bin               build/firmware/
-          cp build/bootloader/bootloader.bin    build/firmware/
-          cp build/partition_table/partition-table.bin build/firmware/
-          cp build/flasher_args.json            build/firmware/
-          cp build/flash_args                   build/firmware/
-          cp build/flash_project_args           build/firmware/
-          ls -laR build/firmware/
-
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
           name: com2-board-firmware
-          path: application/edge_agent/build/firmware/
+          path: |
+            application/edge_agent/build/edge_agent.bin
+            application/edge_agent/build/bootloader/bootloader.bin
+            application/edge_agent/build/partition_table/partition-table.bin
+            application/edge_agent/build/flasher_args.json
+            application/edge_agent/build/flash_args
+            application/edge_agent/build/flash_project_args
           retention-days: 30
