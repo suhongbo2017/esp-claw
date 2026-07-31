@@ -32,19 +32,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install esp-bmgr-assist
-        run: |
-          # Find the Python that IDF uses
-          IDF_PYTHON=$(head -1 $(which idf.py) | sed 's/^#!//')
-          echo "IDF Python: $IDF_PYTHON"
-          "$IDF_PYTHON" -m pip install esp-bmgr-assist
-
-      - name: Generate board support files (com2_board)
-        run: |
-          idf.py bmgr -c ./boards -b com2_board
-
       - name: Build firmware
         run: |
+          # Activate IDF environment
+          . /opt/esp/idf/export.sh
+          
+          # Install board manager helper
+          pip install esp-bmgr-assist
+          
+          # Generate board support files
+          idf.py bmgr -c ./boards -b com2_board
+          
+          # Build the firmware
           idf.py build
 
       - name: Collect firmware artifacts
