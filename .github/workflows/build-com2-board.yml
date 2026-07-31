@@ -26,17 +26,15 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: /workspace/application/edge_agent
+        working-directory: ${{ github.workspace }}/application/edge_agent
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          path: /workspace
 
       - name: Install esp-bmgr-assist
         run: |
-          pip install -y esp-bmgr-assist
+          pip install esp-bmgr-assist
 
       - name: Generate board support files (com2_board)
         run: |
@@ -48,21 +46,21 @@ jobs:
 
       - name: Collect firmware artifacts
         run: |
-          mkdir -p /workspace/firmware_output
-          cp build/edge_agent.bin /workspace/firmware_output/
-          cp build/bootloader/bootloader.bin /workspace/firmware_output/
-          cp build/partition_table/partition-table.bin /workspace/firmware_output/
-          cp build/*.bin /workspace/firmware_output/ 2>/dev/null || true
-          cp build/flasher_args.json /workspace/firmware_output/
-          cp build/flash_args /workspace/firmware_output/
-          cp build/flash_project_args /workspace/firmware_output/
-          cp build/bootloader/*.bin /workspace/firmware_output/ 2>/dev/null || true
-          cp build/partition_table/*.bin /workspace/firmware_output/ 2>/dev/null || true
-          ls -la /workspace/firmware_output/
+          mkdir -p ${{ github.workspace }}/firmware_output
+          cp build/edge_agent.bin ${{ github.workspace }}/firmware_output/
+          cp build/bootloader/bootloader.bin ${{ github.workspace }}/firmware_output/
+          cp build/partition_table/partition-table.bin ${{ github.workspace }}/firmware_output/
+          cp build/*.bin ${{ github.workspace }}/firmware_output/ 2>/dev/null || true
+          cp build/flasher_args.json ${{ github.workspace }}/firmware_output/
+          cp build/flash_args ${{ github.workspace }}/firmware_output/
+          cp build/flash_project_args ${{ github.workspace }}/firmware_output/
+          cp build/bootloader/*.bin ${{ github.workspace }}/firmware_output/ 2>/dev/null || true
+          cp build/partition_table/*.bin ${{ github.workspace }}/firmware_output/ 2>/dev/null || true
+          ls -la ${{ github.workspace }}/firmware_output/
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
           name: com2-board-firmware
-          path: /workspace/firmware_output/
+          path: ${{ github.workspace }}/firmware_output/
           retention-days: 30
