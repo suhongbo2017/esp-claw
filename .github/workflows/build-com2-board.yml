@@ -48,18 +48,18 @@ jobs:
 
       - name: Collect firmware artifacts
         run: |
-          mkdir -p ${{ github.workspace }}/firmware_output
-          cp build/edge_agent.bin               ${{ github.workspace }}/firmware_output/
-          cp build/bootloader/bootloader.bin    ${{ github.workspace }}/firmware_output/
-          cp build/partition_table/partition-table.bin ${{ github.workspace }}/firmware_output/
-          cp build/flasher_args.json            ${{ github.workspace }}/firmware_output/
-          cp build/flash_args                   ${{ github.workspace }}/firmware_output/
-          cp build/flash_project_args           ${{ github.workspace }}/firmware_output/
-          ls -laR ${{ github.workspace }}/firmware_output/
+          mkdir -p build/firmware
+          cp build/edge_agent.bin               build/firmware/
+          cp build/bootloader/bootloader.bin    build/firmware/
+          cp build/partition_table/partition-table.bin build/firmware/
+          cp build/flasher_args.json            build/firmware/
+          cp build/flash_args                   build/firmware/
+          cp build/flash_project_args           build/firmware/
+          ls -laR build/firmware/
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
           name: com2-board-firmware
-          path: ${{ github.workspace }}/firmware_output/
+          path: application/edge_agent/build/firmware/
           retention-days: 30
