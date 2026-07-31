@@ -38,13 +38,3 @@ peripherals:
       invert_flags:
         clk_inv: false
 
-  # LCD SPI Configuration (SCLK=IO5, MOSI=IO7)
-  - name: spi_display
-    type: spi
-    role: master
-    config:
-      spi_bus_config:
-        spi_port: SPI2_HOST
-        data0_io_num: 7
-        sclk_io_num: 5
-        max_transfer_sz: 6400

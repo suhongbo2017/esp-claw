@@ -1,9 +1,5 @@
 # Builds the ESP-Claw firmware for the custom COM2 board
 # (ESP32-S3 with 16MB Flash + Quad PSRAM)
-#
-# After fork: go to Actions tab, enable this workflow,
-# then click "Run workflow" → "Build" to compile.
-# Download the firmware .bin files from the workflow artifacts.
 
 name: Build COM2 Board
 
@@ -18,9 +14,8 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
-      # Using ESP-IDF v5.5 (matches project's CI recommendation)
       image: espressif/idf:release-v5.5
 
     defaults:
@@ -34,33 +29,35 @@ jobs:
 
       - name: Build firmware
         run: |
-          # Activate IDF environment
-          . /opt/esp/idf/export.sh
-          
-          # Install board manager helper
+          set -e
+
+          # 1. Activate IDF environment (sets PATH, IDF_PATH, etc.)
+          source /opt/esp/idf/export.sh
+
+          # 2. Install board manager CLI helper
           pip install esp-bmgr-assist
-          
-          # Generate board support files
+
+          # 3. Generate board support files (gen_bmgr_codes/)
           idf.py bmgr -c ./boards -b com2_board
-          
-          # Build the firmware
+
+          # 4. Resolve dependencies and generate sdkconfig
+          idf.py reconfigure
+
+          # 5. Build the firmware
           idf.py build
 
       - name: Collect firmware artifacts
         run: |
           mkdir -p ${{ github.workspace }}/firmware_output
-          cp build/edge_agent.bin ${{ github.workspace }}/firmware_output/
-          cp build/bootloader/bootloader.bin ${{ github.workspace }}/firmware_output/
+          cp build/edge_agent.bin               ${{ github.workspace }}/firmware_output/
+          cp build/bootloader/bootloader.bin    ${{ github.workspace }}/firmware_output/
           cp build/partition_table/partition-table.bin ${{ github.workspace }}/firmware_output/
-          cp build/*.bin ${{ github.workspace }}/firmware_output/ 2>/dev/null || true
-          cp build/flasher_args.json ${{ github.workspace }}/firmware_output/
-          cp build/flash_args ${{ github.workspace }}/firmware_output/
-          cp build/flash_project_args ${{ github.workspace }}/firmware_output/
-          cp build/bootloader/*.bin ${{ github.workspace }}/firmware_output/ 2>/dev/null || true
-          cp build/partition_table/*.bin ${{ github.workspace }}/firmware_output/ 2>/dev/null || true
-          ls -la ${{ github.workspace }}/firmware_output/
+          cp build/flasher_args.json            ${{ github.workspace }}/firmware_output/
+          cp build/flash_args                   ${{ github.workspace }}/firmware_output/
+          cp build/flash_project_args           ${{ github.workspace }}/firmware_output/
+          ls -laR ${{ github.workspace }}/firmware_output/
 
-      - name: Upload firmware
+      - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
           name: com2-board-firmware
