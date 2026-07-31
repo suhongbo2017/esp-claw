@@ -1,0 +1,5 @@
+board: com2_board
+chip: esp32s3
+version: 1.0.0
+description: "Custom ESP32-S3 board with 16MB Flash + Quad PSRAM (4-line)"
+manufacturer: "custom"
