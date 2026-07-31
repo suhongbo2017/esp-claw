@@ -16,15 +16,12 @@ on:
       - 'components/**'
       - '.github/workflows/build-com2-board.yml'
 
-env:
-  # ESP-IDF release version (matches project's CI recommendation)
-  IDF_RELEASE_VERSION: release-v5.5
-
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: espressif/idf:${IDF_RELEASE_VERSION}
+      # Using ESP-IDF v5.5 (matches project's CI recommendation)
+      image: espressif/idf:release-v5.5
 
     defaults:
       run:
@@ -39,24 +36,11 @@ jobs:
 
       - name: Install esp-bmgr-assist
         run: |
-          pip install esp-bmgr-assist
+          pip install -y esp-bmgr-assist
 
       - name: Generate board support files (com2_board)
         run: |
           idf.py bmgr -c ./boards -b com2_board
-        env:
-          # Board path is boards/community/com2_board/
-          # The -c ./boards flag sets the boards root directory
-          # The -b com2_board flag selects the specific board
-          IDF_BOARD_MANAGER: "1"
-
-      - name: Configure partition table for 16MB
-        run: |
-          # Ensure the partition table config is set for 16MB flash
-          echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> sdkconfig
-          echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions_16MB.csv\"" >> sdkconfig
-          # Also verify sdkconfig matches our board defaults
-          idf.py reconfigure
 
       - name: Build firmware
         run: |
