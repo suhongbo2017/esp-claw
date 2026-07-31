@@ -34,7 +34,10 @@ jobs:
 
       - name: Install esp-bmgr-assist
         run: |
-          python -m pip install esp-bmgr-assist
+          # Find the Python that IDF uses
+          IDF_PYTHON=$(head -1 $(which idf.py) | sed 's/^#!//')
+          echo "IDF Python: $IDF_PYTHON"
+          "$IDF_PYTHON" -m pip install esp-bmgr-assist
 
       - name: Generate board support files (com2_board)
         run: |
