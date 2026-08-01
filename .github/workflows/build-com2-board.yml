@@ -54,6 +54,9 @@ jobs:
             application/edge_agent/build/edge_agent.bin
             application/edge_agent/build/bootloader/bootloader.bin
             application/edge_agent/build/partition_table/partition-table.bin
+            application/edge_agent/build/ota_data_initial.bin
+            application/edge_agent/build/system.bin
+            application/edge_agent/build/storage.bin
             application/edge_agent/build/flasher_args.json
             application/edge_agent/build/flash_args
             application/edge_agent/build/flash_project_args
