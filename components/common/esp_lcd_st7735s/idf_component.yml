@@ -1,0 +1,5 @@
+description: ST7735S LCD driver for ESP32-S3
+version: "1.0.0"
+
+dependencies:
+  espressif/esp_lcd: "^1.0"

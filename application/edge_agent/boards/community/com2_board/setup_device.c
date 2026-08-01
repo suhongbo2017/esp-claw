@@ -14,6 +14,7 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
+#include "esp_lcd_st7735s.h"
 #endif
 
 static const char *TAG = "COM2_BOARD_SETUP_DEVICE";
@@ -93,47 +94,29 @@ CUSTOM_DEVICE_IMPLEMENT(camera, usb_camera_init, usb_camera_deinit);
 #if CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT
 static const char *TAG_LCD = "COM2_BOARD_LCD_INIT";
 
-// ST7735S initialization commands
-static const struct {
-    uint8_t cmd;
-    const uint8_t *data;
-    size_t len;
-    uint16_t delay_ms;
-} st7735s_init_cmds[] = {
-    {0xAB, (const uint8_t[]){0x38, 0x80, 0x00}, 3, 0},   // BGR
-    {0xBB, (const uint8_t[]){0x2D, 0x0C, 0x02}, 3, 0},   // LC0
-    {0xC0, (const uint8_t[]){0x2C, 0x05}, 2, 0},         // VRH1
-    {0xC1, (const uint8_t[]){0x05, 0x45}, 2, 0},         // VRH2
-    {0xC2, (const uint8_t[]){0x83, 0x40}, 2, 0},         // VRH3
-    {0xC3, (const uint8_t[]){0x8A, 0x2A}, 2, 0},         // VCM1
-    {0xC4, (const uint8_t[]){0x8A, 0xEE}, 2, 0},         // VCM2
-    {0xC5, (const uint8_t[]){0x0E, 0x12}, 2, 0},         // VMH
-    {0xC6, (const uint8_t[]){0x0C}, 1, 0},               // VCM_OTP
-    {0x3A, (const uint8_t[]){0x05, 0x00}, 2, 0},         // COLMOD: 16-bit
-    {0x29, NULL, 0, 120},                                 // Display ON
-};
-
 esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
                                      const esp_lcd_panel_dev_config_t *panel_dev_config,
                                      esp_lcd_panel_handle_t *ret_panel)
 {
     ESP_LOGI(TAG_LCD, "Creating ST7735S panel via factory");
 
-    // Send initialization commands
-    for (size_t i = 0; i < sizeof(st7735s_init_cmds) / sizeof(st7735s_init_cmds[0]); i++) {
-        esp_err_t ret = esp_lcd_panel_io_tx_param(io, st7735s_init_cmds[i].cmd,
-                                                    st7735s_init_cmds[i].data,
-                                                    st7735s_init_cmds[i].len);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG_LCD, "Failed to send init cmd 0x%02x: %s", st7735s_init_cmds[i].cmd, esp_err_to_name(ret));
-            return ret;
-        }
-        if (st7735s_init_cmds[i].delay_ms > 0) {
-            vTaskDelay(pdMS_TO_TICKS(st7735s_init_cmds[i].delay_ms));
-        }
+    // Create ST7735S configuration from panel dev config
+    esp_lcd_st7735s_config_t st7735s_config = {
+        .reset_gpio_num = panel_dev_config->reset_gpio_num,
+        .width = 128,  // ST7735S default width
+        .height = 160, // ST7735S default height
+        .bpp = 16,
+        .rgb_order = 0, // RGB
+    };
+
+    // Create panel using our custom driver
+    esp_err_t ret = esp_lcd_new_panel_st7735s(io, &st7735s_config, ret_panel);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG_LCD, "Failed to create ST7735S panel: %s", esp_err_to_name(ret));
+        return ret;
     }
 
-    ESP_LOGI(TAG_LCD, "ST7735S initialization commands sent");
+    ESP_LOGI(TAG_LCD, "ST7735S panel created successfully");
     return ESP_OK;
 }
 #endif
