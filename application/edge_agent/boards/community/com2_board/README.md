@@ -86,6 +86,47 @@ python -m serial.tools.miniterm COM20 115200
 
 ## 关键配置说明
 
+### OTA 固件升级 (Over-the-Air)
+
+该固件支持通过 HTTP API 进行 OTA 升级，无需物理连接。
+
+**API 端点：**
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/ota/start` | POST | 开始 OTA 升级，JSON body: `{"url": "https://.../edge_agent.bin"}` |
+| `/api/ota/status` | GET | 查看 OTA 状态（idle/in_progress） |
+| `/api/ota/abort` | POST | 中止正在进行的 OTA 升级 |
+
+**使用示例：**
+
+```bash
+# 1. 查看状态
+curl http://192.168.4.1/api/ota/status
+
+# 2. 开始升级
+curl -X POST http://192.168.4.1/api/ota/start \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/firmware/edge_agent.bin"}'
+
+# 3. 中止升级（可选）
+curl -X POST http://192.168.4.1/api/ota/abort
+```
+
+**分区表要求：**
+
+OTA 功能需要分区表包含 `ota_0` 和 `ota_1` 分区（已内置在 `partitions_16MB.csv` 中）：
+
+```
+# 名称      类型  子类型  偏移量    大小
+nvs         data  nvs     0x11000   0x6000
+otadata     data  ota     0x10000   0x2000
+phy_init    data  phy     0x17000   0x1000
+factory     app   factory 0x20000   0x7b0000
+ota_0       app   ota_0   -         5M
+ota_1       app   ota_1   -         5M
+```
+
 ### SPI LCD (ST7735S 1.77")
 
 | 参数 | 值 |
