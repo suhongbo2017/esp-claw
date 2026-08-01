@@ -8,7 +8,9 @@ devices:
     dependencies:
       espressif/usb_host_uvc: "2.4.2"
 
-  # PDM Microphone (bare PDM mic, no I2C codec IC)
+  # PDM Microphone (bare PDM mic, no I2C codec IC).
+  # ST7735S display is handled directly in setup_device.c as a custom device.
+  # (No built-in driver exists in ESP-IDF for ST7735S.)
   - name: audio_adc
     chip: internal
     type: audio_codec
@@ -21,8 +23,6 @@ devices:
       adc_init_gain: 0
     peripherals:
       - name: i2s_audio_in
-
-
 
   # I2C Master (for peripherals)
   - name: i2c_master

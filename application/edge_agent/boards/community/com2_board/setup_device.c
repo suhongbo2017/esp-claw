@@ -10,11 +10,12 @@
 #include "esp_board_manager_includes.h"
 #include "gen_board_device_custom.h"
 
-#if CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT
+/* ST7735S is removed from board_devices.yaml because ESP-IDF has no built-in
+ * driver for it. We implement it as a custom device here using the same
+ * pattern as waveshare_rlcd_4_2 — compiled unconditionally.              */
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
-#endif
 
 static const char *TAG = "COM2_BOARD_SETUP_DEVICE";
 
@@ -108,7 +109,6 @@ CUSTOM_DEVICE_IMPLEMENT(camera, usb_camera_init, usb_camera_deinit);
  *      CUSTOM_DEVICE_IMPLEMENT(display_lcd, ...)
  * ================================================================ */
 
-#if CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT
 static const char *TAG_ST7735S = "ST7735S";
 
 /* ── Pin assignments ─────────────────────────────────────────────────────── */
@@ -432,4 +432,3 @@ static int display_lcd_deinit(void *device_handle)
 }
 
 CUSTOM_DEVICE_IMPLEMENT(display_lcd, display_lcd_init, display_lcd_deinit);
-#endif  /* CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT */
