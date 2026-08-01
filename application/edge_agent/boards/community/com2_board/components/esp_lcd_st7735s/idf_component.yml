@@ -1,0 +1,2 @@
+version: "1.0.0"
+description: "ST7735S SPI LCD panel driver for com2_board"
