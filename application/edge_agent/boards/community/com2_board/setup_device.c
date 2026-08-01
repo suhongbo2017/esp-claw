@@ -11,9 +11,6 @@
 #include "gen_board_device_custom.h"
 
 #if CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT
-#include "esp_lcd_panel_io.h"
-#include "esp_lcd_panel_ops.h"
-#include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_st7735s.h"
 #endif
 
@@ -100,17 +97,7 @@ esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
 {
     ESP_LOGI(TAG_LCD, "Creating ST7735S panel via factory");
 
-    // Create ST7735S configuration from panel dev config
-    esp_lcd_st7735s_config_t st7735s_config = {
-        .reset_gpio_num = panel_dev_config->reset_gpio_num,
-        .width = 128,  // ST7735S default width
-        .height = 160, // ST7735S default height
-        .bpp = 16,
-        .rgb_order = 0, // RGB
-    };
-
-    // Create panel using our custom driver
-    esp_err_t ret = esp_lcd_new_panel_st7735s(io, &st7735s_config, ret_panel);
+    esp_err_t ret = esp_lcd_new_panel_st7735s(io, panel_dev_config, ret_panel);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG_LCD, "Failed to create ST7735S panel: %s", esp_err_to_name(ret));
         return ret;
