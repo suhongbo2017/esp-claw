@@ -37,6 +37,12 @@ Thumbs.db
 
 .codex
 
+# Firmware build artifacts (downloaded from CI)
+com2-board-firmware*
+
+# Serial monitor scripts
+monitor_*.ps1
+
 # Docs
 docs/node_modules
 docs/public/d2
