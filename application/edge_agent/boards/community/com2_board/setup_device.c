@@ -113,23 +113,13 @@ static const struct {
     {0x29, NULL, 0, 120},                                 // Display ON
 };
 
-typedef struct {
-    esp_lcd_panel_io_handle_t io_handle;
-    esp_lcd_panel_dev_handle_t panel_handle;
-} custom_lcd_handle_t;
-
 esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
                                      const esp_lcd_panel_dev_config_t *panel_dev_config,
                                      esp_lcd_panel_handle_t *ret_panel)
 {
-    ESP_LOGI(TAG_LCD, "Creating ST7735S panel");
+    ESP_LOGI(TAG_LCD, "Creating ST7735S panel via factory");
 
-    // Note: esp_lcd_new_panel_st7735s may not be available in all ESP-IDF versions.
-    // For now, we'll use a placeholder - the actual panel creation should be done
-    // by the board manager or a compatible driver.
-    // This is a simplified implementation that assumes the panel driver is available.
-
-    // Send initialization commands via panel IO
+    // Send initialization commands
     for (size_t i = 0; i < sizeof(st7735s_init_cmds) / sizeof(st7735s_init_cmds[0]); i++) {
         esp_err_t ret = esp_lcd_panel_io_tx_param(io, st7735s_init_cmds[i].cmd,
                                                     st7735s_init_cmds[i].data,
@@ -146,38 +136,4 @@ esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
     ESP_LOGI(TAG_LCD, "ST7735S initialization commands sent");
     return ESP_OK;
 }
-
-static int lcd_init(void *config, int cfg_size, void **device_handle)
-{
-    (void)config;
-    (void)cfg_size;
-
-    custom_lcd_handle_t *handle = calloc(1, sizeof(*handle));
-    if (handle == NULL) {
-        ESP_LOGE(TAG_LCD, "Failed to allocate LCD handle");
-        return ESP_ERR_NO_MEM;
-    }
-
-    *device_handle = &handle->handle;
-    ESP_LOGI(TAG_LCD, "ST7735S LCD device initialized");
-    return ESP_OK;
-}
-
-static int lcd_deinit(void *device_handle)
-{
-    if (device_handle) {
-        custom_lcd_handle_t *handle = (custom_lcd_handle_t *)device_handle;
-        if (handle->panel_handle) {
-            esp_lcd_delete_panel(handle->panel_handle);
-        }
-        if (handle->io_handle) {
-            esp_lcd_delete_panel_io(handle->io_handle);
-        }
-        free(handle);
-    }
-    ESP_LOGI(TAG_LCD, "ST7735S LCD deinitialized");
-    return ESP_OK;
-}
-
-CUSTOM_DEVICE_IMPLEMENT(display_lcd, lcd_init, lcd_deinit);
 #endif
