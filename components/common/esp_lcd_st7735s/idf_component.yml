@@ -1,0 +1,6 @@
+version: "1.0.0"
+description: "ESP LCD ST7735S SPI panel driver"
+targets:
+  - esp32s3
+dependencies:
+  idf: ">=5.3"
