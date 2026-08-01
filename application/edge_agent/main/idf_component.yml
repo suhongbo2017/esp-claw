@@ -40,6 +40,3 @@ dependencies:
     path: ../../../components/common/esp_video
     matches:
     - if: $CONFIG{ESP_BOARD_DEV_CAMERA_SUPPORT} == True
-
-  esp_lcd_st7735s:
-    path: ../../../components/common/esp_lcd_st7735s
