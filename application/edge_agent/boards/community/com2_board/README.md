@@ -15,6 +15,7 @@
 | **I2C Master** | SCL=IO40, SDA=IO39 | 通用 I2C 总线 |
 | **I2S PDM (麦克风)** | CLK=IO9, DIN=IO17 | 单声道 PDM 麦克风输入 |
 | **USB UVC Camera** | USB-DP/DM | 外接 USB 摄像头 |
+| **SPI LCD (ST7735S)** | RST=IO15, DC=IO16, MOSI=IO17, SCLK=IO18, CS=IO21 | 1.77" 128x160 彩屏 |
 | **DHT (温湿度)** | 任意 GPIO | 通过 I2C 扩展或直连 |
 
 ## 固件构建
@@ -84,6 +85,22 @@ python -m serial.tools.miniterm COM20 115200
 | `setup_device.c` | 自定义设备初始化代码 |
 
 ## 关键配置说明
+
+### SPI LCD (ST7735S 1.77")
+
+| 参数 | 值 |
+|------|-----|
+| 驱动芯片 | ST7735S |
+| 尺寸 | 1.77 英寸 |
+| 分辨率 | 128×160 (竖屏) |
+| 接口 | SPI 4线 |
+| 色深 | 16bit (RGB565) |
+| 时钟频率 | 24 MHz |
+| RST | GPIO15 |
+| DC | GPIO16 |
+| MOSI | GPIO17 |
+| SCLK | GPIO18 |
+| CS | GPIO21 |
 
 ### Quad PSRAM 配置
 

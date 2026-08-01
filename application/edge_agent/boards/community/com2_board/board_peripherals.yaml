@@ -38,3 +38,15 @@ peripherals:
       invert_flags:
         clk_inv: false
 
+  # LCD SPI Configuration for ST7735S (SCLK=IO18, MOSI=IO17)
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        mosi_io_num: 17
+        miso_io_num: -1
+        sclk_io_num: 18
+        max_transfer_sz: 5120    # 128 * 2 * 10 (10 lines RGB565)
+
