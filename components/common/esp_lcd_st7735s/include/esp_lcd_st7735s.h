@@ -31,7 +31,7 @@ typedef struct {
     uint8_t if_format;            /**< Interface format */
     uint8_t bpp;                  /**< Bits per pixel */
     uint8_t flip;                 /**< Flip vertical */
-    uint8_t vsp翻转;              /**< Vertical scroll */
+    uint8_t vsd;              /**< Vertical scroll direction */
     uint8_t x_start;              /**< Start X position */
     uint8_t y_start;              /**< Start Y position */
 } esp_lcd_st7735s_config_t;
