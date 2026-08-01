@@ -14,8 +14,7 @@ extern "C" {
  *
  * Creates the SPI bus, panel IO handler, allocates the panel context,
  * populates the vtable, resets the chip, sends init commands, and returns
- * an opaque esp_lcd_panel_handle_t ready for use with all standard
- * panel operations (reset, init, draw_bitmap, mirror, etc.).
+ * an opaque esp_lcd_panel_handle_t ready for standard panel operations.
  *
  * @param mosi_gpio    SPI MOSI pin
  * @param sclk_gpio    SPI SCLK pin
@@ -25,7 +24,7 @@ extern "C" {
  * @param width        Display width in pixels
  * @param height       Display height in pixels
  * @param spi_host     SPI host port (SPI2_HOST or SPI3_HOST)
- * @param clk_hz       SPI clock frequency
+ * @param clk_hz       SPI clock frequency in Hz
  * @param ret_panel    Output: panel handle
  * @return ESP_OK on success
  */

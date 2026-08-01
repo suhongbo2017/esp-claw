@@ -10,7 +10,7 @@
 #include "esp_board_manager_includes.h"
 #include "gen_board_device_custom.h"
 
-/* ST7735S driver component (compiled as IDF component with full type visibility) */
+/* ST7735S driver — in components/common/ for guaranteed CMake discovery */
 #include "esp_lcd_st7735s.h"
 
 static const char *TAG = "COM2_BOARD_SETUP_DEVICE";
@@ -93,9 +93,7 @@ CUSTOM_DEVICE_IMPLEMENT(camera, usb_camera_init, usb_camera_deinit);
 
 /* ================================================================
  * ST7735S LCD — Custom Device Implementation
- *
- * Uses esp_lcd_st7735s component for all panel internals.
- * This file only handles board-manager registration.
+ * Uses esp_lcd_st7735s component (components/common/) for panel internals.
  * ================================================================ */
 
 static const char *TAG_LCD = "ST7735S";
@@ -128,7 +126,7 @@ static int display_lcd_init(void *config, int cfg_size, void **device_handle)
     esp_err_t ret = ESP_OK;
     esp_lcd_panel_handle_t panel = NULL;
 
-    /* Create the panel using our component — all internals handled there */
+    /* Create the panel — all internals handled by esp_lcd_st7735s component */
     ret = esp_lcd_new_panel_st7735s(
         GPIO_NUM_17,   /* MOSI */
         GPIO_NUM_18,   /* SCLK */
