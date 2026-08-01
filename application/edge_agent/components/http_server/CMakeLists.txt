@@ -40,11 +40,6 @@ if(CONFIG_APP_CLAW_LUA_MODULE_HTTP_SERVER)
     list(APPEND http_server_requires lua_module_http_server)
 endif()
 
-if(CONFIG_APP_OTA_SUPPORT)
-    list(APPEND http_server_srcs "http_server_ota_api.c")
-    list(APPEND http_server_requires esp_http_update)
-endif()
-
 idf_component_register(
     SRCS
         ${http_server_srcs}

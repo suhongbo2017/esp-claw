@@ -1,13 +1,5 @@
 menu "App Claw Config"
 
-    config APP_OTA_SUPPORT
-        bool "Enable OTA (Over-the-Air) firmware update support"
-        default y
-        help
-            Enable OTA firmware update via HTTP API.
-            Requires partition table with ota_0 and ota_1 partitions.
-            Provides /api/ota/start, /api/ota/status, /api/ota/abort endpoints.
-
     config APP_CLAW_ENABLE_CLI
         bool "Enable App Claw CLI"
         default y
