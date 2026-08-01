@@ -202,7 +202,6 @@ static void ota_update_task(void *arg)
         esp_err_t err = esp_http_update_finish(s_ota_ctx.update_handle);
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "OTA update successful, rebooting...");
-            httpd_resp_send_200(NULL); // Send response before reboot
 
             // Set the new partition as boot partition
             const esp_partition_t *boot_partition = esp_partition_get_next(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, NULL);
@@ -210,11 +209,14 @@ static void ota_update_task(void *arg)
                 esp_err_t ret = esp_partition_set_boot(boot_partition, true);
                 if (ret != ESP_OK) {
                     ESP_LOGE(TAG, "Failed to set boot partition: %s", esp_err_to_name(ret));
+                } else {
+                    ESP_LOGI(TAG, "Boot partition set to: %s", boot_partition->label);
                 }
             }
 
             // Reboot after a short delay
             vTaskDelay(pdMS_TO_TICKS(1000));
+            ESP_LOGI(TAG, "Rebooting...");
             esp_restart();
         } else {
             ESP_LOGE(TAG, "OTA update failed: %s", esp_err_to_name(err));
