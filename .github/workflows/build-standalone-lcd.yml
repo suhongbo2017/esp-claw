@@ -1,0 +1,37 @@
+name: Build Standalone LCD Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'standalone_lcd_test/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: espressif/idf:release-v5.5
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build firmware
+        run: |
+          source /opt/esp/idf/export.sh
+          cd standalone_lcd_test
+          idf.py set-target esp32s3
+          idf.py build
+          
+      - name: List output files
+        if: always()
+        working-directory: standalone_lcd_test
+        run: find build -name "*.bin" -exec ls -lh {} \;
+        
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lcd-test-binaries
+          path: |
+            standalone_lcd_test/build/bootloader/*.bin
+            standalone_lcd_test/build/partition_table/*.bin
+            standalone_lcd_test/build/standalone_lcd_test.bin
+          retention-days: 7
