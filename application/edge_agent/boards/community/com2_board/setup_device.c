@@ -28,8 +28,9 @@
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 
-/* Full esp_lcd_panel_t struct definition — same header as waveshare_rlcd_4_2.
- * ESP-IDF exposes all component include paths at build time.             */
+/* Local copy of esp_lcd_panel_t struct for board-level vtable population.
+ * In ESP-IDF v5.x the struct is opaque; this component provides the
+ * exact layout so setup_device.c can embed and populate it.              */
 #include "esp_lcd_panel_interface.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
