@@ -1,34 +1,45 @@
-#include <string.h>
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * @file setup_device.c
+ * @brief COM2 Board (ESP32-S3, 16MB Flash + Quad PSRAM) custom device init.
+ *
+ * GPIO Pinout for ST7735S SPI LCD:
+ *   MOSI = GPIO17, SCLK = GPIO18, CS = GPIO21, DC = GPIO16, RST = GPIO15
+ *
+ * Display geometry: 128 × 160 pixels (portrait)
+ * Pixel format: RGB565 (16-bit)
+ *
+ * Follows WAVESHARE_RLCD_4_2 pattern: embed esp_lcd_panel_t in context struct,
+ * populate vtable manually, use only public APIs exposed through IDF headers.
+ */
+
 #include <stdlib.h>
+#include <string.h>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_log.h"
-#include "esp_check.h"
+#include "esp_err.h"
+#include "esp_bit_defs.h"
+#include "driver/gpio.h"
+#include "driver/spi_master.h"
+
+/* Full esp_lcd_panel_t struct definition — same header as waveshare_rlcd_4_2.
+ * ESP-IDF exposes all component include paths at build time.             */
+#include "esp_lcd_panel_interface.h"
+#include "esp_lcd_panel_io.h"
+#include "esp_lcd_panel_ops.h"
+
 #include "esp_video_init.h"
 #include "esp_video_device.h"
 #include "esp_board_manager_includes.h"
 #include "gen_board_device_custom.h"
-
-/* Full esp_lcd_panel_t struct definition for embedding.
- * Matched against esp_lcd_panel_interface.h from ESP-IDF v5.5. */
-struct esp_lcd_panel_t {
-    esp_err_t (*reset)(struct esp_lcd_panel_t *panel);
-    esp_err_t (*init)(struct esp_lcd_panel_t *panel);
-    esp_err_t (*del)(struct esp_lcd_panel_t *panel);
-    esp_err_t (*draw_bitmap)(struct esp_lcd_panel_t *panel, int x_start, int y_start,
-                              int x_end, int y_end, const void *color_data);
-    esp_err_t (*mirror)(struct esp_lcd_panel_t *panel, bool x_axis, bool y_axis);
-    esp_err_t (*swap_xy)(struct esp_lcd_panel_t *panel, bool swap_axes);
-    esp_err_t (*set_gap)(struct esp_lcd_panel_t *panel, int x_gap, int y_gap);
-    esp_err_t (*invert_color)(struct esp_lcd_panel_t *panel, bool invert_color_data);
-    esp_err_t (*disp_on_off)(struct esp_lcd_panel_t *panel, bool on_off);
-    esp_err_t (*disp_sleep)(struct esp_lcd_panel_t *panel, bool sleep);
-    esp_err_t (*set_brightness)(struct esp_lcd_panel_t *panel, int brightness);
-    void *user_data;
-};
-
-typedef struct esp_lcd_panel_t st7735s_panel_t;
+#include "esp_log.h"
+#include "esp_check.h"
 
 static const char *TAG = "COM2_BOARD_SETUP_DEVICE";
 
@@ -109,10 +120,7 @@ static int usb_camera_deinit(void *device_handle)
 CUSTOM_DEVICE_IMPLEMENT(camera, usb_camera_init, usb_camera_deinit);
 
 /* ================================================================
- * ST7735S LCD — Fully Inlined Driver
- *
- * No external header dependencies. All internals defined inline.
- * Matches proven pattern from waveshare_rlcd_4_2.
+ * ST7735S LCD — Custom Device Implementation
  *
  * GPIO Pinout:
  *   MOSI = GPIO17, SCLK = GPIO18, CS = GPIO21, DC = GPIO16, RST = GPIO15
@@ -135,12 +143,12 @@ static const char *TAG_LCD = "ST7735S";
 #define LCD_SPI_HOST    SPI2_HOST
 #define LCD_SPI_CLK_HZ  (40 * 1000 * 1000)  /* 40 MHz */
 
-/* ── Context structure ───────────────────────────────────────────────────── */
+/* ── Context structure (embedded panel — matches WAVESHARE pattern) ──────── */
 typedef struct {
-    esp_lcd_panel_t base;                   /* VTABLE embedded — MUST BE FIRST */
-    esp_lcd_panel_io_handle_t io;           /* Panel IO handle */
-    gpio_num_t rst_gpio;                    /* Reset pin */
-    uint8_t madctl;                         /* MADCTL byte for orientation */
+    esp_lcd_panel_t base;                /* VTABLE embedded — MUST BE FIRST */
+    esp_lcd_panel_io_handle_t io;        /* Panel IO handle                */
+    gpio_num_t rst_gpio;                 /* Reset pin                      */
+    uint8_t madctl;                      /* MADCTL byte for orientation    */
 } lcd_context_t;
 
 /* ── Init-command table — from ST7735S datasheet ─────────────────────────── */
@@ -152,20 +160,20 @@ typedef struct {
 } init_cmd_t;
 
 static const init_cmd_t s_init_cmds[] = {
-    {0x01, {}, 0, 20},                            /* Software Reset */
-    {0x11, {}, 0, 120},                           /* Sleep Out */
-    {0xB1, {0x00, 0x1B, 0x08}, 3, 0},            /* Frame Rate Ctrl */
+    {0x01, {}, 0, 20},                            /* Software Reset         */
+    {0x11, {}, 0, 120},                           /* Sleep Out              */
+    {0xB1, {0x00, 0x1B, 0x08}, 3, 0},            /* Frame Rate Ctrl        */
     {0xC0, {0x0D, 0x01, 0x02, 0x02}, 4, 0},      /* Display Inversion Ctrl */
-    {0xC1, {0x40, 0x81}, 2, 0},                  /* Display Inversion Ctrl (2) */
-    {0xC5, {0x30, 0x30}, 2, 0},                  /* VCOM Control */
+    {0xC1, {0x40, 0x81}, 2, 0},                  /* Display Inversion Ctrl 2*/
+    {0xC5, {0x30, 0x30}, 2, 0},                  /* VCOM Control           */
     {0xC8, {0x00,0x32,0x36,0x3D,0x3E,0x2C,0x29,0x2E,0x30,0x30,0x38,0x3B}, 12, 0}, /* Gamma */
-    {0x3A, {0x55}, 1, 0},                        /* Pixel Format: 16-bit RGB565 */
-    {0x2A, {0x00, 0x00, 0x00, 0x7F}, 4, 0},     /* Column Address Set */
-    {0x2B, {0x00, 0x00, 0x00, 0x9F}, 4, 0},     /* Page Address Set */
-    {0x29, {}, 0, 120},                          /* Display On */
+    {0x3A, {0x55}, 1, 0},                        /* Pixel Format RGB565    */
+    {0x2A, {0x00, 0x00, 0x00, 0x7F}, 4, 0},     /* Column Address Set     */
+    {0x2B, {0x00, 0x00, 0x00, 0x9F}, 4, 0},     /* Page Address Set       */
+    {0x29, {}, 0, 120},                          /* Display On             */
 };
 
-/* Send init commands with MADCTL injection at command 0x36 */
+/* Send init commands, injecting MADCTL at 0x36 command */
 static esp_err_t send_init_cmds(esp_lcd_panel_io_handle_t io, uint8_t madctl)
 {
     for (size_t i = 0; i < sizeof(s_init_cmds)/sizeof(s_init_cmds[0]); i++) {
@@ -193,7 +201,7 @@ static esp_err_t send_init_cmds(esp_lcd_panel_io_handle_t io, uint8_t madctl)
 
 /* ── VTABLE callback implementations ─────────────────────────────────────── */
 
-static esp_err_t cb_del(st7735s_panel_t *panel)
+static esp_err_t st7735s_panel_del(esp_lcd_panel_t *panel)
 {
     lcd_context_t *ctx = (lcd_context_t *)panel;
     if (ctx->rst_gpio >= 0) {
@@ -203,7 +211,7 @@ static esp_err_t cb_del(st7735s_panel_t *panel)
     return ESP_OK;
 }
 
-static esp_err_t cb_reset(st7735s_panel_t *panel)
+static esp_err_t st7735s_panel_reset(esp_lcd_panel_t *panel)
 {
     lcd_context_t *ctx = (lcd_context_t *)panel;
     if (ctx->rst_gpio >= 0) {
@@ -218,28 +226,32 @@ static esp_err_t cb_reset(st7735s_panel_t *panel)
     return ESP_OK;
 }
 
-static esp_err_t cb_init(st7735s_panel_t *panel)
+static esp_err_t st7735s_panel_init(esp_lcd_panel_t *panel)
 {
     lcd_context_t *ctx = (lcd_context_t *)panel;
     ESP_LOGI(TAG_LCD, "Sending init seq (MADCTL=0x%02X)", ctx->madctl);
     return send_init_cmds(ctx->io, ctx->madctl);
 }
 
-static esp_err_t cb_draw_bitmap(st7735s_panel_t *panel, int xs, int ys,
-                                 int xe, int ye, const void *color_data)
+static esp_err_t st7735s_panel_draw_bitmap(esp_lcd_panel_t *panel,
+                                           int x_start, int y_start,
+                                           int x_end, int y_end,
+                                           const void *color_data)
 {
     lcd_context_t *ctx = (lcd_context_t *)panel;
-    uint8_t caset[4] = {(uint8_t)(xs>>8),(uint8_t)xs,(uint8_t)((xe-1)>>8),(uint8_t)(xe-1)};
-    uint8_t raset[4] = {(uint8_t)(ys>>8),(uint8_t)ys,(uint8_t)((ye-1)>>8),(uint8_t)(ye-1)};
+    uint8_t caset[4] = {(uint8_t)(x_start>>8),(uint8_t)x_start,
+                        (uint8_t)((x_end-1)>>8),(uint8_t)(x_end-1)};
+    uint8_t raset[4] = {(uint8_t)(y_start>>8),(uint8_t)y_start,
+                        (uint8_t)((y_end-1)>>8),(uint8_t)(y_end-1)};
     esp_lcd_panel_io_tx_param(ctx->io, 0x2A, caset, 4);
     esp_lcd_panel_io_tx_param(ctx->io, 0x2B, raset, 4);
     esp_lcd_panel_io_tx_param(ctx->io, 0x2C, NULL, 0);
-    size_t len = (size_t)(xe - xs) * (ye - ys) * 2;
+    size_t len = (size_t)(x_end - x_start) * (y_end - y_start) * 2;
     esp_lcd_panel_io_tx_param(ctx->io, 0x2C, color_data, len);
     return ESP_OK;
 }
 
-static esp_err_t cb_mirror(st7735s_panel_t *panel, bool mx, bool my)
+static esp_err_t st7735s_panel_mirror(esp_lcd_panel_t *panel, bool mx, bool my)
 {
     lcd_context_t *ctx = (lcd_context_t *)panel;
     uint8_t v = ctx->madctl;
@@ -248,7 +260,7 @@ static esp_err_t cb_mirror(st7735s_panel_t *panel, bool mx, bool my)
     return esp_lcd_panel_io_tx_param(ctx->io, 0x36, &v, 1);
 }
 
-static esp_err_t cb_swap_xy(st7735s_panel_t *panel, bool swap)
+static esp_err_t st7735s_panel_swap_xy(esp_lcd_panel_t *panel, bool swap)
 {
     lcd_context_t *ctx = (lcd_context_t *)panel;
     uint8_t v = ctx->madctl;
@@ -256,27 +268,27 @@ static esp_err_t cb_swap_xy(st7735s_panel_t *panel, bool swap)
     return esp_lcd_panel_io_tx_param(ctx->io, 0x36, &v, 1);
 }
 
-static esp_err_t cb_invert_color(st7735s_panel_t *panel, bool invert)
+static esp_err_t st7735s_panel_invert_color(esp_lcd_panel_t *panel, bool invert)
 {
     lcd_context_t *ctx = (lcd_context_t *)panel;
     uint8_t cmd = invert ? 0x21 : 0x20;
     return esp_lcd_panel_io_tx_param(ctx->io, cmd, NULL, 0);
 }
 
-static esp_err_t cb_disp_on_off(st7735s_panel_t *panel, bool on)
+static esp_err_t st7735s_panel_disp_on_off(esp_lcd_panel_t *panel, bool on)
 {
     lcd_context_t *ctx = (lcd_context_t *)panel;
     uint8_t cmd = on ? 0x29 : 0x28;
     return esp_lcd_panel_io_tx_param(ctx->io, cmd, NULL, 0);
 }
 
-static esp_err_t cb_set_gap(st7735s_panel_t *panel, int x, int y)
+static esp_err_t st7735s_panel_set_gap(esp_lcd_panel_t *panel, int x, int y)
 {
     (void)panel; (void)x; (void)y;
     return ESP_OK;
 }
 
-static esp_err_t cb_disp_sleep(st7735s_panel_t *panel, bool sleep)
+static esp_err_t st7735s_panel_disp_sleep(esp_lcd_panel_t *panel, bool sleep)
 {
     lcd_context_t *ctx = (lcd_context_t *)panel;
     uint8_t cmd = sleep ? 0x10 : 0x11;
@@ -290,17 +302,17 @@ static esp_err_t cb_disp_sleep(st7735s_panel_t *panel, bool sleep)
 
 /* ── Report configuration back to board-manager ─────────────────────────── */
 static const dev_display_lcd_config_t s_lcd_cfg = {
-    .name         = "display_lcd",
-    .chip         = "st7735",
-    .sub_type     = "spi",
-    .lcd_width    = LCD_WIDTH,
-    .lcd_height   = LCD_HEIGHT,
-    .swap_xy      = true,
-    .mirror_x     = false,
-    .mirror_y     = true,
-    .invert_color = false,
+    .name          = "display_lcd",
+    .chip          = "st7735",
+    .sub_type      = "spi",
+    .lcd_width     = LCD_WIDTH,
+    .lcd_height    = LCD_HEIGHT,
+    .swap_xy       = true,
+    .mirror_x      = false,
+    .mirror_y      = true,
+    .invert_color  = false,
     .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
-    .data_endian  = LCD_RGB_DATA_ENDIAN_BIG,
+    .data_endian   = LCD_RGB_DATA_ENDIAN_BIG,
     .bits_per_pixel = 16,
 };
 
@@ -363,16 +375,16 @@ static int display_lcd_init(void *config, int cfg_size, void **device_handle)
     p->madctl   = madctl;
 
     /* ── 5. Populate vtable ─────────────────────────────────────────── */
-    p->base.reset       = (esp_err_t (*)(struct esp_lcd_panel_t *))cb_reset;
-    p->base.init        = (esp_err_t (*)(struct esp_lcd_panel_t *))cb_init;
-    p->base.del         = (esp_err_t (*)(struct esp_lcd_panel_t *))cb_del;
-    p->base.draw_bitmap = (esp_err_t (*)(struct esp_lcd_panel_t *, int, int, int, int, const void *))cb_draw_bitmap;
-    p->base.mirror      = (esp_err_t (*)(struct esp_lcd_panel_t *, bool, bool))cb_mirror;
-    p->base.swap_xy     = (esp_err_t (*)(struct esp_lcd_panel_t *, bool))cb_swap_xy;
-    p->base.set_gap     = (esp_err_t (*)(struct esp_lcd_panel_t *, int, int))cb_set_gap;
-    p->base.invert_color = (esp_err_t (*)(struct esp_lcd_panel_t *, bool))cb_invert_color;
-    p->base.disp_on_off = (esp_err_t (*)(struct esp_lcd_panel_t *, bool))cb_disp_on_off;
-    p->base.disp_sleep  = (esp_err_t (*)(struct esp_lcd_panel_t *, bool))cb_disp_sleep;
+    p->base.reset       = st7735s_panel_reset;
+    p->base.init        = st7735s_panel_init;
+    p->base.del         = st7735s_panel_del;
+    p->base.draw_bitmap = st7735s_panel_draw_bitmap;
+    p->base.mirror      = st7735s_panel_mirror;
+    p->base.swap_xy     = st7735s_panel_swap_xy;
+    p->base.set_gap     = st7735s_panel_set_gap;
+    p->base.invert_color = st7735s_panel_invert_color;
+    p->base.disp_on_off = st7735s_panel_disp_on_off;
+    p->base.disp_sleep  = st7735s_panel_disp_sleep;
 
     /* ── 6. Reset & initialize panel ────────────────────────────────── */
     esp_lcd_panel_reset(&p->base);
